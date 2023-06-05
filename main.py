@@ -8,13 +8,6 @@ import requests
 from dotenv import load_dotenv
 
 
-def get_response(url, params=None, headers=None, files=None, data=None):
-    response = requests.get(url, params=params, data=data, files=files, headers=headers)
-    response.raise_for_status()
-
-    return response.json()
-
-
 def get_media_path(name_path):
     media_path = Path(name_path)
     media_path.mkdir(parents=True, exist_ok=True)
@@ -30,40 +23,27 @@ def download_media(url, filename):
         file.write(response.content)
 
 
-def vk_request(http_method, method, **kwargs):
-    url = f'https://api.vk.com/method/{method}'
-    response = getattr(requests, http_method)(url, **kwargs)
-    response.raise_for_status()
-
-    return response.json()
-
-
 def download_xkcd_comics(name_folder):
     url = 'https://xkcd.com/info.0.json'
-    last_comics_num = get_response(url=url)['num']
+    response = requests.get(url)
+    response.raise_for_status()
+    last_comics_num = response.json()['num']
 
     random_comics_num = randint(1, last_comics_num)
 
     url = f'https://xkcd.com/{random_comics_num}/info.0.json'
-    response = get_response(url)
+    response = requests.get(url)
+    response.raise_for_status()
+    comics_response = response.json()
 
     folder = get_media_path(name_folder)
 
-    url_split = urlsplit(response['img'])
+    url_split = urlsplit(comics_response['img'])
     filepath = join(folder / url_split.path[8:])
 
-    download_media(response['img'], filepath)
+    download_media(comics_response['img'], filepath)
 
-    return filepath, response['alt']
-
-
-def get_groups(access_token):
-    params = {
-        'access_token': access_token,
-        'v': 5.131,
-    }
-
-    return vk_request('get', 'groups.get', params=params)
+    return filepath, comics_response['alt']
 
 
 def get_upload_url(access_token, app_id):
@@ -72,8 +52,11 @@ def get_upload_url(access_token, app_id):
         'group_id': app_id,
         'v': 5.131,
     }
+    url = 'https://api.vk.com/method/photos.getWallUploadServer'
+    response = requests.get(url, params=params)
+    response.raise_for_status()
 
-    return vk_request('get', 'photos.getWallUploadServer', params=params)
+    return response.json()
 
 
 def upload_file(access_token, app_id, filename, caption):
@@ -82,7 +65,8 @@ def upload_file(access_token, app_id, filename, caption):
     with open(filename, 'rb') as file:
         files = {'photo': file}
         response = requests.post(upload_server['upload_url'], files=files)
-        response.raise_for_status()
+
+    response.raise_for_status()
 
     data = {
         'access_token': access_token,
@@ -94,11 +78,14 @@ def upload_file(access_token, app_id, filename, caption):
         'caption': caption,
         'v': 5.131,
     }
+    url = 'https://api.vk.com/method/photos.saveWallPhoto'
+    response = requests.post(url, data=data)
+    response.raise_for_status()
 
-    return vk_request('post', 'photos.saveWallPhoto', data=data)
+    return response.json()
 
 
-def wall_post(access_token, owner_id, from_group, attachments, message):
+def post_on_wall(access_token, owner_id, from_group, attachments, message):
     params = {
         'access_token': access_token,
         'owner_id': owner_id,
@@ -107,8 +94,10 @@ def wall_post(access_token, owner_id, from_group, attachments, message):
         'message': message,
         'v': 5.131,
     }
-
-    return vk_request('get', 'wall.post', params=params)
+    url = 'https://api.vk.com/method/wall.post'
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+    return response.json()
 
 
 def main():
@@ -120,7 +109,7 @@ def main():
 
     filepath, alt_message = download_xkcd_comics(name_folder)
     response = upload_file(access_token, app_id, filepath, alt_message)['response'][0]
-    wall_post(access_token, -int(group_id), 1, f"photo{response['owner_id']}_{response['id']}", alt_message)
+    post_on_wall(access_token, -int(group_id), 1, f"photo{response['owner_id']}_{response['id']}", alt_message)
     os.remove(filepath)
 
 
