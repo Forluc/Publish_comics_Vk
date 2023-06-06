@@ -14,8 +14,9 @@ class ResponseError(BaseException):
 
 def raise_vk_error_status(response):
     response.raise_for_status()
+    response = response.json()
     try:
-        raise ResponseError(response.json()['error']['error_msg'])
+        raise ResponseError(response['error']['error_msg'])
     except KeyError:
         pass
 
