@@ -19,6 +19,7 @@ def raise_vk_error_status(response):
         raise ResponseError(response['error']['error_msg'])
     except KeyError:
         pass
+    return response
 
 
 def get_media_path(name_path):
@@ -66,8 +67,7 @@ def get_upload_url(access_token, app_id):
     }
     url = 'https://api.vk.com/method/photos.getWallUploadServer'
     response = requests.get(url, params=params)
-    raise_vk_error_status(response)
-    return response.json()
+    return raise_vk_error_status(response)
 
 
 def upload_file(access_token, app_id, filename, caption):
@@ -77,8 +77,7 @@ def upload_file(access_token, app_id, filename, caption):
         files = {'photo': file}
         response = requests.post(upload_server['upload_url'], files=files)
 
-    raise_vk_error_status(response)
-    file_response = response.json()
+    file_response = raise_vk_error_status(response)
 
     params = {
         'access_token': access_token,
@@ -92,8 +91,7 @@ def upload_file(access_token, app_id, filename, caption):
     }
     url = 'https://api.vk.com/method/photos.saveWallPhoto'
     response = requests.post(url, params=params)
-    raise_vk_error_status(response)
-    return response.json()
+    return raise_vk_error_status(response)
 
 
 def post_on_wall(access_token, owner_id, from_group, attachments, message):
@@ -107,8 +105,7 @@ def post_on_wall(access_token, owner_id, from_group, attachments, message):
     }
     url = 'https://api.vk.com/method/wall.post'
     response = requests.get(url, params=params)
-    raise_vk_error_status(response)
-    return response.json()
+    return raise_vk_error_status(response)
 
 
 def main():
